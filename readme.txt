@@ -3,7 +3,7 @@ Contributors: rd3
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.3.2
+Stable tag: 0.3.4
 License: GPLv2 or later
 
 Find exact duplicate images used in WordPress posts (post type only) via SHA-256, replace references with a master, and move duplicate files. Never deletes files.

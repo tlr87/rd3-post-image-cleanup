@@ -3,7 +3,7 @@
  * Plugin Name: RD3 Post Image Cleanup
  * Plugin URI:  https://rd3.local/
  * Description: Find exact duplicate images used in WordPress posts (post type only) via SHA-256, replace references with a master image, and move duplicate files to uploads/duplicate-images/. Never deletes files.
- * Version:     0.3.2
+ * Version:     0.3.4
  * Author:      RD3
  * Author URI:  https://rd3.local/
  * License:     GPL-2.0-or-later
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'RD3_PIC_VERSION', '0.3.2' );
+define( 'RD3_PIC_VERSION', '0.3.4' );
 define( 'RD3_PIC_PLUGIN_FILE', __FILE__ );
 define( 'RD3_PIC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RD3_PIC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
