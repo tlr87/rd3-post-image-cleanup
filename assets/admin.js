@@ -12,10 +12,14 @@
 	var $cleanupSummary = $('#rd3-pic-cleanup-summary');
 	var $log = $('#rd3-pic-log');
 	var $clearLogBtn = $('#rd3-pic-clear-log-btn');
+
 	var $scanLargeBtn = $('#rd3-pic-scan-large-btn');
 	var $downsizeBtn = $('#rd3-pic-downsize-btn');
 	var $largeResults = $('#rd3-pic-large-results');
 
+	/**
+	 * Generic status helper.
+	 */
 	function setStatus($el, msg, type) {
 		$el
 			.removeClass('is-busy is-success is-error')
@@ -23,12 +27,36 @@
 			.text(msg || '');
 	}
 
+	/**
+	 * Return an AJAX error message.
+	 */
+	function getAjaxError(xhr, fallback) {
+		if (
+			xhr &&
+			xhr.responseJSON &&
+			xhr.responseJSON.data &&
+			xhr.responseJSON.data.message
+		) {
+			return xhr.responseJSON.data.message;
+		}
+
+		return fallback;
+	}
+
+	/*
+	 * ------------------------------------------------------------
+	 * Duplicate scan
+	 * ------------------------------------------------------------
+	 */
+
 	$scanBtn.on('click', function () {
 		if ($scanBtn.prop('disabled')) {
 			return;
 		}
+
 		$scanBtn.prop('disabled', true);
 		$cleanupBtn.prop('disabled', true);
+
 		setStatus($scanStatus, rd3Pic.i18n.scanning, 'busy');
 
 		$.post(rd3Pic.ajaxUrl, {
@@ -37,23 +65,34 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($scanStatus, res.data.message || rd3Pic.i18n.scanDone, 'success');
+					setStatus(
+						$scanStatus,
+						res.data.message || rd3Pic.i18n.scanDone,
+						'success'
+					);
+
 					$results.html(res.data.html || '');
 					$resultsCard.show();
+
 					if (res.data.has_groups) {
 						$cleanupBtn.prop('disabled', false);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.scanError;
-					setStatus($scanStatus, msg, 'error');
+					setStatus(
+						$scanStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.scanError,
+						'error'
+					);
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.scanError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($scanStatus, msg, 'error');
+				setStatus(
+					$scanStatus,
+					getAjaxError(xhr, rd3Pic.i18n.scanError),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanBtn.prop('disabled', false);
@@ -64,6 +103,7 @@
 		if (!window.confirm(rd3Pic.i18n.confirmClear)) {
 			return;
 		}
+
 		$.post(rd3Pic.ajaxUrl, {
 			action: 'rd3_pic_clear_results',
 			nonce: rd3Pic.nonce
@@ -73,22 +113,40 @@
 				$resultsCard.hide();
 				$cleanupBtn.prop('disabled', true);
 				$cleanupSummary.hide().empty();
-				setStatus($scanStatus, res.data.message || '', 'success');
+
+				setStatus(
+					$scanStatus,
+					res.data.message || '',
+					'success'
+				);
 			}
 		});
 	});
+
+	/*
+	 * ------------------------------------------------------------
+	 * Duplicate cleanup
+	 * ------------------------------------------------------------
+	 */
 
 	$cleanupBtn.on('click', function () {
 		if ($cleanupBtn.prop('disabled')) {
 			return;
 		}
+
 		if (!window.confirm(rd3Pic.i18n.confirmCleanup)) {
 			return;
 		}
 
 		$cleanupBtn.prop('disabled', true);
 		$scanBtn.prop('disabled', true);
-		setStatus($cleanupStatus, rd3Pic.i18n.cleaning, 'busy');
+
+		setStatus(
+			$cleanupStatus,
+			rd3Pic.i18n.cleaning,
+			'busy'
+		);
+
 		$cleanupSummary.hide().empty();
 
 		$.post(rd3Pic.ajaxUrl, {
@@ -97,29 +155,48 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($cleanupStatus, res.data.message || rd3Pic.i18n.cleanupDone, 'success');
+					setStatus(
+						$cleanupStatus,
+						res.data.message || rd3Pic.i18n.cleanupDone,
+						'success'
+					);
+
 					if (res.data.summaryHtml) {
-						$cleanupSummary.html(res.data.summaryHtml).show();
+						$cleanupSummary
+							.html(res.data.summaryHtml)
+							.show();
 					}
+
 					if (res.data.logHtml) {
 						$log.html(res.data.logHtml);
 					}
+
 					$results.empty();
 					$resultsCard.hide();
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.cleanupError;
-					setStatus($cleanupStatus, msg, 'error');
-					if (res && res.data && res.data.logHtml) {
+					setStatus(
+						$cleanupStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.cleanupError,
+						'error'
+					);
+
+					if (
+						res &&
+						res.data &&
+						res.data.logHtml
+					) {
 						$log.html(res.data.logHtml);
 					}
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.cleanupError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($cleanupStatus, msg, 'error');
+				setStatus(
+					$cleanupStatus,
+					getAjaxError(xhr, rd3Pic.i18n.cleanupError),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanBtn.prop('disabled', false);
@@ -127,13 +204,26 @@
 			});
 	});
 
+	/*
+	 * ------------------------------------------------------------
+	 * Large image scanner
+	 * ------------------------------------------------------------
+	 */
+
 	$scanLargeBtn.on('click', function () {
 		if ($scanLargeBtn.prop('disabled')) {
 			return;
 		}
+
 		$scanLargeBtn.prop('disabled', true);
 		$downsizeBtn.prop('disabled', true);
-		setStatus($largeStatus, rd3Pic.i18n.scanningLarge, 'busy');
+
+		setStatus(
+			$largeStatus,
+			rd3Pic.i18n.scanningLarge,
+			'busy'
+		);
+
 		$largeResults.hide().empty();
 
 		$.post(rd3Pic.ajaxUrl, {
@@ -142,22 +232,35 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($largeStatus, res.data.message || rd3Pic.i18n.scanLargeDone, 'success');
-					$largeResults.html(res.data.html || '').show();
+					setStatus(
+						$largeStatus,
+						res.data.message || rd3Pic.i18n.scanLargeDone,
+						'success'
+					);
+
+					$largeResults
+						.html(res.data.html || '')
+						.show();
+
 					if (res.data.largeCount > 0) {
 						$downsizeBtn.prop('disabled', false);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.scanError;
-					setStatus($largeStatus, msg, 'error');
+					setStatus(
+						$largeStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.scanError,
+						'error'
+					);
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.scanError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($largeStatus, msg, 'error');
+				setStatus(
+					$largeStatus,
+					getAjaxError(xhr, rd3Pic.i18n.scanError),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanLargeBtn.prop('disabled', false);
@@ -168,12 +271,19 @@
 		if ($downsizeBtn.prop('disabled')) {
 			return;
 		}
+
 		if (!window.confirm(rd3Pic.i18n.confirmDownsize)) {
 			return;
 		}
+
 		$downsizeBtn.prop('disabled', true);
 		$scanLargeBtn.prop('disabled', true);
-		setStatus($largeStatus, rd3Pic.i18n.downsizing, 'busy');
+
+		setStatus(
+			$largeStatus,
+			rd3Pic.i18n.downsizing,
+			'busy'
+		);
 
 		$.post(rd3Pic.ajaxUrl, {
 			action: 'rd3_pic_downsize',
@@ -181,24 +291,37 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($largeStatus, res.data.message || rd3Pic.i18n.downsizeDone, 'success');
+					setStatus(
+						$largeStatus,
+						res.data.message || rd3Pic.i18n.downsizeDone,
+						'success'
+					);
+
 					if (res.data.summaryHtml) {
-						$largeResults.html(res.data.summaryHtml).show();
+						$largeResults
+							.html(res.data.summaryHtml)
+							.show();
 					}
+
 					if (res.data.logHtml) {
 						$log.html(res.data.logHtml);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.downsizeError;
-					setStatus($largeStatus, msg, 'error');
+					setStatus(
+						$largeStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.downsizeError,
+						'error'
+					);
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.downsizeError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($largeStatus, msg, 'error');
+				setStatus(
+					$largeStatus,
+					getAjaxError(xhr, rd3Pic.i18n.downsizeError),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanLargeBtn.prop('disabled', false);
@@ -206,6 +329,177 @@
 			});
 	});
 
+	/*
+	 * ------------------------------------------------------------
+	 * Image links in Posts & Pages
+	 * ------------------------------------------------------------
+	 */
+
+	var $imageLinksStatus = $('#rd3-pic-image-links-status');
+	var $scanImageLinksBtn = $('#rd3-pic-scan-image-links-btn');
+	var $fixImageLinksBtn = $('#rd3-pic-fix-image-links-btn');
+	var $imageLinksResults = $('#rd3-pic-image-links-results');
+
+	$scanImageLinksBtn.on('click', function () {
+		if ($scanImageLinksBtn.prop('disabled')) {
+			return;
+		}
+
+		$scanImageLinksBtn.prop('disabled', true);
+		$fixImageLinksBtn.prop('disabled', true);
+
+		setStatus(
+			$imageLinksStatus,
+			rd3Pic.i18n.imageLinksScanning,
+			'busy'
+		);
+
+		$imageLinksResults
+			.hide()
+			.empty();
+
+		$.post(rd3Pic.ajaxUrl, {
+			action: 'rd3_pic_scan_image_links',
+			nonce: rd3Pic.nonce
+		})
+			.done(function (res) {
+				if (res && res.success) {
+					setStatus(
+						$imageLinksStatus,
+						res.data.message || rd3Pic.i18n.imageLinksScanDone,
+						'success'
+					);
+
+					$imageLinksResults
+						.html(res.data.html || '')
+						.show();
+
+					if (res.data.canRun) {
+						$fixImageLinksBtn.prop('disabled', false);
+					}
+				} else {
+					setStatus(
+						$imageLinksStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.imageLinksScanError,
+						'error'
+					);
+
+					if (
+						res &&
+						res.data &&
+						res.data.html
+					) {
+						$imageLinksResults
+							.html(res.data.html)
+							.show();
+					}
+				}
+			})
+			.fail(function (xhr) {
+				setStatus(
+					$imageLinksStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.imageLinksScanError
+					),
+					'error'
+				);
+			})
+			.always(function () {
+				$scanImageLinksBtn.prop('disabled', false);
+			});
+	});
+
+	$fixImageLinksBtn.on('click', function () {
+		if ($fixImageLinksBtn.prop('disabled')) {
+			return;
+		}
+
+		if (!window.confirm(rd3Pic.i18n.imageLinksConfirm)) {
+			return;
+		}
+
+		$fixImageLinksBtn.prop('disabled', true);
+		$scanImageLinksBtn.prop('disabled', true);
+
+		setStatus(
+			$imageLinksStatus,
+			rd3Pic.i18n.imageLinksFixing,
+			'busy'
+		);
+
+		$.post(rd3Pic.ajaxUrl, {
+			action: 'rd3_pic_fix_image_links',
+			nonce: rd3Pic.nonce
+		})
+			.done(function (res) {
+				if (res && res.success) {
+					setStatus(
+						$imageLinksStatus,
+						res.data.message || rd3Pic.i18n.imageLinksFixed,
+						'success'
+					);
+
+					if (res.data.summaryHtml) {
+						$imageLinksResults
+							.html(res.data.summaryHtml)
+							.show();
+					}
+
+					if (res.data.logHtml) {
+						$log.html(res.data.logHtml);
+					}
+				} else {
+					setStatus(
+						$imageLinksStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.imageLinksFixError,
+						'error'
+					);
+
+					if (
+						res &&
+						res.data &&
+						res.data.summaryHtml
+					) {
+						$imageLinksResults
+							.html(res.data.summaryHtml)
+							.show();
+					}
+
+					if (
+						res &&
+						res.data &&
+						res.data.logHtml
+					) {
+						$log.html(res.data.logHtml);
+					}
+				}
+			})
+			.fail(function (xhr) {
+				setStatus(
+					$imageLinksStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.imageLinksFixError
+					),
+					'error'
+				);
+			})
+			.always(function () {
+				$scanImageLinksBtn.prop('disabled', false);
+				$fixImageLinksBtn.prop('disabled', true);
+			});
+	});
+
+	/*
+	 * ------------------------------------------------------------
+	 * Named image tool
+	 * ------------------------------------------------------------
+	 */
 
 	var $namedInput = $('#rd3-pic-named-input');
 	var $scanNamedBtn = $('#rd3-pic-scan-named-btn');
@@ -216,13 +510,25 @@
 
 	$scanNamedBtn.on('click', function () {
 		var name = $.trim($namedInput.val() || '');
+
 		if (!name) {
-			setStatus($namedStatus, rd3Pic.i18n.namedNeedName, 'error');
+			setStatus(
+				$namedStatus,
+				rd3Pic.i18n.namedNeedName,
+				'error'
+			);
 			return;
 		}
+
 		$scanNamedBtn.prop('disabled', true);
 		$downsizeNamedBtn.prop('disabled', true);
-		setStatus($namedStatus, rd3Pic.i18n.namedScanning, 'busy');
+
+		setStatus(
+			$namedStatus,
+			rd3Pic.i18n.namedScanning,
+			'busy'
+		);
+
 		$namedResults.hide().empty();
 
 		$.post(rd3Pic.ajaxUrl, {
@@ -232,23 +538,41 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($namedStatus, res.data.message || rd3Pic.i18n.namedScanDone, 'success');
-					$namedResults.html(res.data.html || '').show();
-					lastNamedFilename = res.data.filename || name;
+					setStatus(
+						$namedStatus,
+						res.data.message || rd3Pic.i18n.namedScanDone,
+						'success'
+					);
+
+					$namedResults
+						.html(res.data.html || '')
+						.show();
+
+					lastNamedFilename =
+						res.data.filename || name;
+
 					if (res.data.canRun) {
 						$downsizeNamedBtn.prop('disabled', false);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.scanError;
-					setStatus($namedStatus, msg, 'error');
+					setStatus(
+						$namedStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.scanError,
+						'error'
+					);
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.scanError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($namedStatus, msg, 'error');
+				setStatus(
+					$namedStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.scanError
+					),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanNamedBtn.prop('disabled', false);
@@ -259,17 +583,32 @@
 		if ($downsizeNamedBtn.prop('disabled')) {
 			return;
 		}
-		var name = lastNamedFilename || $.trim($namedInput.val() || '');
+
+		var name =
+			lastNamedFilename ||
+			$.trim($namedInput.val() || '');
+
 		if (!name) {
-			setStatus($namedStatus, rd3Pic.i18n.namedNeedName, 'error');
+			setStatus(
+				$namedStatus,
+				rd3Pic.i18n.namedNeedName,
+				'error'
+			);
 			return;
 		}
+
 		if (!window.confirm(rd3Pic.i18n.namedConfirm)) {
 			return;
 		}
+
 		$downsizeNamedBtn.prop('disabled', true);
 		$scanNamedBtn.prop('disabled', true);
-		setStatus($namedStatus, rd3Pic.i18n.namedWorking, 'busy');
+
+		setStatus(
+			$namedStatus,
+			rd3Pic.i18n.namedWorking,
+			'busy'
+		);
 
 		$.post(rd3Pic.ajaxUrl, {
 			action: 'rd3_pic_downsize_named',
@@ -278,24 +617,40 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($namedStatus, res.data.message || rd3Pic.i18n.namedDone, 'success');
+					setStatus(
+						$namedStatus,
+						res.data.message || rd3Pic.i18n.namedDone,
+						'success'
+					);
+
 					if (res.data.summaryHtml) {
-						$namedResults.html(res.data.summaryHtml).show();
+						$namedResults
+							.html(res.data.summaryHtml)
+							.show();
 					}
+
 					if (res.data.logHtml) {
 						$log.html(res.data.logHtml);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.downsizeError;
-					setStatus($namedStatus, msg, 'error');
+					setStatus(
+						$namedStatus,
+						(res && res.data && res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.downsizeError,
+						'error'
+					);
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.downsizeError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($namedStatus, msg, 'error');
+				setStatus(
+					$namedStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.downsizeError
+					),
+					'error'
+				);
 			})
 			.always(function () {
 				$scanNamedBtn.prop('disabled', false);
@@ -310,6 +665,11 @@
 		}
 	});
 
+	/*
+	 * ------------------------------------------------------------
+	 * Manual merge
+	 * ------------------------------------------------------------
+	 */
 
 	var $mergeKeep = $('#rd3-pic-merge-keep');
 	var $mergeRemove = $('#rd3-pic-merge-remove');
@@ -317,19 +677,32 @@
 	var $mergeRunBtn = $('#rd3-pic-merge-run-btn');
 	var $mergeStatus = $('#rd3-pic-merge-status');
 	var $mergeResults = $('#rd3-pic-merge-results');
+
 	var lastMergeKeep = '';
 	var lastMergeRemove = '';
 
 	$mergePreviewBtn.on('click', function () {
 		var keep = $.trim($mergeKeep.val() || '');
 		var remove = $.trim($mergeRemove.val() || '');
+
 		if (!keep || !remove) {
-			setStatus($mergeStatus, rd3Pic.i18n.mergeNeedNames, 'error');
+			setStatus(
+				$mergeStatus,
+				rd3Pic.i18n.mergeNeedNames,
+				'error'
+			);
 			return;
 		}
+
 		$mergePreviewBtn.prop('disabled', true);
 		$mergeRunBtn.prop('disabled', true);
-		setStatus($mergeStatus, rd3Pic.i18n.mergePreviewing, 'busy');
+
+		setStatus(
+			$mergeStatus,
+			rd3Pic.i18n.mergePreviewing,
+			'busy'
+		);
+
 		$mergeResults.hide().empty();
 
 		$.post(rd3Pic.ajaxUrl, {
@@ -340,30 +713,59 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($mergeStatus, res.data.message || rd3Pic.i18n.mergePreviewDone, 'success');
-					$mergeResults.html(res.data.html || '').show();
-					lastMergeKeep = res.data.keep || keep;
-					lastMergeRemove = res.data.remove || remove;
+					setStatus(
+						$mergeStatus,
+						res.data.message || rd3Pic.i18n.mergePreviewDone,
+						'success'
+					);
+
+					$mergeResults
+						.html(res.data.html || '')
+						.show();
+
+					lastMergeKeep =
+						res.data.keep || keep;
+
+					lastMergeRemove =
+						res.data.remove || remove;
+
 					if (res.data.canRun) {
 						$mergeRunBtn.prop('disabled', false);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.mergeError;
-					setStatus($mergeStatus, msg, 'error');
-					if (res && res.data && res.data.html) {
-						$mergeResults.html(res.data.html).show();
+					var msg =
+						(res &&
+							res.data &&
+							res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.mergeError;
+
+					setStatus(
+						$mergeStatus,
+						msg,
+						'error'
+					);
+
+					if (
+						res &&
+						res.data &&
+						res.data.html
+					) {
+						$mergeResults
+							.html(res.data.html)
+							.show();
 					}
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.mergeError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($mergeStatus, msg, 'error');
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.html) {
-					$mergeResults.html(xhr.responseJSON.data.html).show();
-				}
+				setStatus(
+					$mergeStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.mergeError
+					),
+					'error'
+				);
 			})
 			.always(function () {
 				$mergePreviewBtn.prop('disabled', false);
@@ -374,18 +776,36 @@
 		if ($mergeRunBtn.prop('disabled')) {
 			return;
 		}
-		var keep = lastMergeKeep || $.trim($mergeKeep.val() || '');
-		var remove = lastMergeRemove || $.trim($mergeRemove.val() || '');
+
+		var keep =
+			lastMergeKeep ||
+			$.trim($mergeKeep.val() || '');
+
+		var remove =
+			lastMergeRemove ||
+			$.trim($mergeRemove.val() || '');
+
 		if (!keep || !remove) {
-			setStatus($mergeStatus, rd3Pic.i18n.mergeNeedNames, 'error');
+			setStatus(
+				$mergeStatus,
+				rd3Pic.i18n.mergeNeedNames,
+				'error'
+			);
 			return;
 		}
+
 		if (!window.confirm(rd3Pic.i18n.mergeConfirm)) {
 			return;
 		}
+
 		$mergeRunBtn.prop('disabled', true);
 		$mergePreviewBtn.prop('disabled', true);
-		setStatus($mergeStatus, rd3Pic.i18n.mergeWorking, 'busy');
+
+		setStatus(
+			$mergeStatus,
+			rd3Pic.i18n.mergeWorking,
+			'busy'
+		);
 
 		$.post(rd3Pic.ajaxUrl, {
 			action: 'rd3_pic_merge_run',
@@ -395,30 +815,60 @@
 		})
 			.done(function (res) {
 				if (res && res.success) {
-					setStatus($mergeStatus, res.data.message || rd3Pic.i18n.mergeDone, 'success');
+					setStatus(
+						$mergeStatus,
+						res.data.message || rd3Pic.i18n.mergeDone,
+						'success'
+					);
+
 					if (res.data.summaryHtml) {
-						$mergeResults.html(res.data.summaryHtml).show();
+						$mergeResults
+							.html(res.data.summaryHtml)
+							.show();
 					}
+
 					if (res.data.logHtml) {
 						$log.html(res.data.logHtml);
 					}
 				} else {
-					var msg = (res && res.data && res.data.message) ? res.data.message : rd3Pic.i18n.mergeError;
-					setStatus($mergeStatus, msg, 'error');
-					if (res && res.data && res.data.summaryHtml) {
-						$mergeResults.html(res.data.summaryHtml).show();
+					setStatus(
+						$mergeStatus,
+						(res &&
+							res.data &&
+							res.data.message)
+							? res.data.message
+							: rd3Pic.i18n.mergeError,
+						'error'
+					);
+
+					if (
+						res &&
+						res.data &&
+						res.data.summaryHtml
+					) {
+						$mergeResults
+							.html(res.data.summaryHtml)
+							.show();
 					}
-					if (res && res.data && res.data.logHtml) {
+
+					if (
+						res &&
+						res.data &&
+						res.data.logHtml
+					) {
 						$log.html(res.data.logHtml);
 					}
 				}
 			})
 			.fail(function (xhr) {
-				var msg = rd3Pic.i18n.mergeError;
-				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-					msg = xhr.responseJSON.data.message;
-				}
-				setStatus($mergeStatus, msg, 'error');
+				setStatus(
+					$mergeStatus,
+					getAjaxError(
+						xhr,
+						rd3Pic.i18n.mergeError
+					),
+					'error'
+				);
 			})
 			.always(function () {
 				$mergePreviewBtn.prop('disabled', false);
@@ -426,17 +876,29 @@
 			});
 	});
 
+	/*
+	 * ------------------------------------------------------------
+	 * Clear log
+	 * ------------------------------------------------------------
+	 */
+
 	$clearLogBtn.on('click', function () {
 		if (!window.confirm(rd3Pic.i18n.confirmClearLog)) {
 			return;
 		}
+
 		$.post(rd3Pic.ajaxUrl, {
 			action: 'rd3_pic_clear_log',
 			nonce: rd3Pic.nonce
 		}).done(function (res) {
-			if (res && res.success && res.data.logHtml) {
+			if (
+				res &&
+				res.success &&
+				res.data.logHtml
+			) {
 				$log.html(res.data.logHtml);
 			}
 		});
 	});
+
 })(jQuery);
